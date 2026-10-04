@@ -94,6 +94,9 @@ def start(lp:arguments.ModelParams,op:arguments.OptimizationParams,pp:arguments.
 
     # 4. Get the dynamic decay_from_iter value from the scheduler
     decay_from_iter = scheduler.lr_decay_from_iter()
+    if op.lr_decay_from >= 0:
+        decay_from_iter = op.lr_decay_from
+    print(f"[ INFO ] resolution_mode={pp.resolution_mode} decay_from_iter={decay_from_iter}")
 
     if start_checkpoint is None:
         init_xyz=torch.tensor(init_xyz,dtype=torch.float32,device='cuda')
@@ -151,6 +154,7 @@ def start(lp:arguments.ModelParams,op:arguments.OptimizationParams,pp:arguments.
 
     # Time-based stopping: track start time for 59.5 second timeout
     training_start_time = time.time()
+    prev_render_scale = None
     elapsed_time = 0.0
     for epoch in range(start_epoch,total_epoch):
 
@@ -171,6 +175,9 @@ def start(lp:arguments.ModelParams,op:arguments.OptimizationParams,pp:arguments.
                 "status": "timeout",
                 "final_epoch": epoch,
                 "total_epochs": total_epoch,
+                "global_step": global_step,
+                "n_gaussians": int(xyz.shape[-1]*xyz.shape[-2]) if pp.cluster_size else int(xyz.shape[-1]),
+                "decay_from_iter": int(decay_from_iter),
                 "timestamp": time.strftime("%Y-%m-%d %H:%M:%S")
             }
             
@@ -211,6 +218,10 @@ def start(lp:arguments.ModelParams,op:arguments.OptimizationParams,pp:arguments.
                 
                 # 1. Get render_scale from the scheduler
                 render_scale = scheduler.get_res_scale(global_step)
+                if pp.fix_tile_cache and render_scale != prev_render_scale:
+                    # Cached tile lists were built at the old resolution; reusing them renders only a subset of tiles.
+                    StatisticsHelperInst.cached_sorted_tile_list.clear()
+                    prev_render_scale = render_scale
 
                 #DEBUG
                 # print(f"Global Step: {global_step}, Render Scale: {render_scale}")
@@ -358,6 +369,9 @@ def start(lp:arguments.ModelParams,op:arguments.OptimizationParams,pp:arguments.
                 "status": "completed" if epoch == total_epoch-1 else "checkpoint",
                 "epoch": epoch,
                 "total_epochs": total_epoch,
+                "global_step": global_step,
+                "n_gaussians": int(xyz.shape[-1]*xyz.shape[-2]) if pp.cluster_size else int(xyz.shape[-1]),
+                "decay_from_iter": int(decay_from_iter),
                 "timestamp": time.strftime("%Y-%m-%d %H:%M:%S")
             }
             with open(os.path.join(save_path, "training_metrics.json"), 'w') as f:

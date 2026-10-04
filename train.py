@@ -47,6 +47,9 @@ def train(args):
         "--densification_interval 2 "
         "--resolution_mode freq"
     )
+    if not args.as_submitted:
+        # Fix for the stale tile-cache bug in the challenge submission (see README)
+        train_config_base += " --fix_tile_cache"
 
     # Train each scene
     for i, source_path in enumerate(scene_folders):
@@ -68,6 +71,8 @@ if __name__ == "__main__":
     parser.add_argument("--dataset_dir", default="data/eval_data_pinhole")
     parser.add_argument("--output_dir", default="outputs")
     parser.add_argument("--gpu", default="0")
+    parser.add_argument("--as_submitted", action="store_true",
+                        help="Reproduce the challenge submission exactly (without the tile-cache fix)")
     
     args = parser.parse_args()
     train(args)

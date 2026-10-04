@@ -81,6 +81,7 @@ class PipelineParams(ParamGroup):
     # --- ADDED THESE ---
     densify_mode = "free"
     max_n_gaussian = -1
+    fix_tile_cache = False # clear LiteGS's per-image tile list when the render scale changes (stale-cache bug)
     # --- END ADD ---
 
     def __init__(self, parser):
@@ -98,6 +99,7 @@ class OptimizationParams(ParamGroup):
     lambda_dssim = 0.2
     reg_weight = 0.0
     learnable_viewproj = False
+    lr_decay_from = -1 # <0: use the resolution scheduler's value; >=0: override (for ablations)
     def __init__(self, parser):
         super().__init__(parser, "Optimization Parameters")
 
